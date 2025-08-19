@@ -114,21 +114,20 @@ CREATE TEMPORARY TABLE months AS
 WITH months_with_previous AS (
 	SELECT DISTINCT year,
 	month,
-    LAG(month) OVER (PARTITION BY year ORDER BY month) AS previous_month
+    LAG(month) OVER (PARTITION BY year ORDER BY month) AS previous_month,
+    LAG(year) OVER (PARTITION BY year ORDER BY month) AS previous_year
     FROM months
 )
-SELECT customer_ids_per_month.year,
-	customer_ids_per_month.month,
+SELECT c.year,
+	c.month,
     previous_month,
 	COUNT(customer_id) AS retained_customers
-    FROM customer_ids_per_month
+    FROM customer_ids_per_month c
     INNER JOIN months_with_previous USING(month)
     WHERE customer_id IN (SELECT customer_id
-							FROM customer_ids_per_month
-							INNER JOIN months_with_previous USING(month)
-                            WHERE customer_ids_per_month.month = months_with_previous.previous_month)
-                            
+							FROM customer_ids_per_month c2
+                            WHERE c2.month = months_with_previous.previous_month
+                            AND c2.year = months_with_previous.previous_year)
     GROUP BY year, month;
-
 
 # Hint: Use temporary tables, CTEs, or Views when appropiate to simplify your queries.
