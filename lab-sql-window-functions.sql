@@ -130,4 +130,35 @@ SELECT c.year,
                             AND c2.year = months_with_previous.previous_year)
     GROUP BY year, month;
 
-# Hint: Use temporary tables, CTEs, or Views when appropiate to simplify your queries.
+# From Nur's lab:
+
+WITH customer_monthly_activity AS (
+    SELECT DISTINCT
+        YEAR(rental_date) AS rental_year,
+        MONTH(rental_date) AS rental_month, 
+        customer_id,
+        LAG(YEAR(rental_date)) OVER (
+            PARTITION BY customer_id 
+            ORDER BY YEAR(rental_date), MONTH(rental_date)
+        ) AS prev_year,
+        LAG(MONTH(rental_date)) OVER (
+            PARTITION BY customer_id 
+            ORDER BY YEAR(rental_date), MONTH(rental_date)
+        ) AS prev_month
+    FROM RENTAL
+)
+SELECT 
+    rental_year,
+    rental_month, 
+    COUNT(customer_id) AS total_customers,
+    SUM(CASE 
+        -- Normal case: same year, previous month
+        WHEN prev_year = rental_year AND prev_month = rental_month - 1 THEN 1
+        -- Year boundary case: Dec → Jan
+        WHEN prev_year = rental_year - 1 AND prev_month = 12 AND rental_month = 1 THEN 1
+        ELSE 0 
+    END) AS retained_customers
+FROM customer_monthly_activity
+GROUP BY rental_year, rental_month
+ORDER BY rental_year, rental_month;
+
